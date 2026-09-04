@@ -17,9 +17,7 @@ export default function ResultsScreen({ answers, results, onRestart }) {
   const [showCard, setShowCard] = useState(false);
   const { verdict, affordability, rateband, emi } = results;
   const vc = VERDICT_COPY[verdict.verdict];
-
-  const confidenceLabel =
-    affordability.confidence >= 0.8 ? "High" : affordability.confidence >= 0.55 ? "Medium" : "Low";
+  const isStop = verdict.verdict === "dont_borrow";
 
   if (showCard) {
     return (
@@ -55,62 +53,104 @@ export default function ResultsScreen({ answers, results, onRestart }) {
             {vc.label}
           </h2>
           <p className="text-ink/80 font-body text-[.95rem]">{verdict.reason}</p>
+          {verdict.flags?.length > 0 && (
+            <p className="text-[.75rem] text-muted font-body mt-2">
+              Flags: {verdict.flags.join(", ").replace(/_/g, " ")}
+            </p>
+          )}
         </div>
 
-        {/* O2 — Amount */}
-        <Section title="How much" eyebrow="O2 · Maximum amount">
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <Stat label="Lender may sanction" value={inr(affordability.lenderMax)} muted />
-            <Stat label="Safe for you to carry" value={inr(affordability.safeMax)} highlight />
+        {isStop ? (
+          // ---- Stop state: no O2-O4 numbers, just an explanation ----
+          <div className="border border-rule bg-bg2 px-6 py-8 text-center mb-8">
+            <p className="font-display text-[1.15rem] text-ink mb-2">
+              We're not showing amount, rate, or EMI numbers here.
+            </p>
+            <p className="text-muted font-body text-[.9rem] max-w-md mx-auto">
+              Based on what you've told us, taking on a new loan right now would likely make
+              your situation worse, not better. Stabilise existing obligations first — the
+              Negotiation Card below can help explain why, if you need to show someone.
+            </p>
           </div>
-          <p className="text-[.7rem] uppercase tracking-[.08em] text-muted font-body mb-2">
-            Use the safe number — {inr(affordability.recommended)}
-          </p>
-          <p className="text-ink/80 font-body text-[.92rem]">{affordability.reason}</p>
-          <ConfidenceTag confidence={affordability.confidence} />
-        </Section>
-
-        {/* O3 — Rate */}
-        <Section title="Fair rate" eyebrow="O3 · Interest rate">
-          <div className="flex items-baseline gap-3 mb-3">
-            <span className="font-mono text-3xl text-ink">
-              {rateband.rateMin}% – {rateband.rateMax}%
-            </span>
-            <span className="text-muted font-body text-sm">
-              · APR (all-in): <span className="font-mono">{rateband.apr}%</span>
-            </span>
-          </div>
-          <p className="text-ink/80 font-body text-[.92rem]">{rateband.reason}</p>
-        </Section>
-
-        {/* O4 — EMI */}
-        <Section title="EMI to agree to" eyebrow="O4 · Monthly outflow">
-          <p className="font-mono text-3xl text-ink mb-3">{inr(emi.emiCeiling)}/mo</p>
-          <p className="text-ink/80 font-body text-[.92rem] mb-4">{emi.reason}</p>
-
-          <p className="text-[.7rem] uppercase tracking-[.08em] text-muted font-body mb-2">
-            Tenure trade-off
-          </p>
-          <div className="flex flex-wrap gap-2 mb-4">
-            {emi.tenureOptions.map((t) => (
-              <div key={t.months} className="border border-rule px-3 py-2 text-center">
-                <p className="text-[.7rem] text-muted font-body">{t.months} mo</p>
-                <p className="font-mono text-sm text-ink">{inr(t.emi)}</p>
+        ) : (
+          <>
+            {/* O2 — Amount */}
+            <Section title="How much" eyebrow="O2 · Maximum amount">
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <Stat label="Lender may sanction" value={inr(affordability.lenderMax)} muted />
+                <Stat label="Safe for you to carry" value={inr(affordability.safeMax)} highlight />
               </div>
-            ))}
-          </div>
+              {affordability.collateralMax && (
+                <p className="text-[.78rem] text-muted font-body mb-2">
+                  Collateral-based ceiling: {inr(affordability.collateralMax)}
+                </p>
+              )}
+              <p className="text-[.7rem] uppercase tracking-[.08em] text-muted font-body mb-2">
+                Use the safe number — {inr(affordability.recommended)}
+              </p>
+              <p className="text-ink/80 font-body text-[.92rem]">{affordability.reason}</p>
+              <ConfidenceTag confidence={affordability.confidence} />
+            </Section>
 
-          <div
-            className={`border-l-2 px-4 py-3 text-[.9rem] font-body ${
-              emi.stressCase.survivable ? "border-accent bg-accentSoft" : "border-warn bg-[#F6EFE4]"
-            }`}
-          >
-            <b>Stress test</b> — if income drops {emi.stressCase.incomeDropPct}% or rate rises{" "}
-            {emi.stressCase.rateRisePct}pt: EMI becomes {inr(emi.stressCase.stressedEMI)}, using{" "}
-            {emi.stressCase.stressedFOIR}% of income.{" "}
-            {emi.stressCase.survivable ? "Still manageable." : "This would be tight — consider a smaller amount or longer tenure."}
-          </div>
-        </Section>
+            {/* O3 — Rate */}
+            <Section title="Fair rate" eyebrow="O3 · Interest rate">
+              <div className="flex items-baseline gap-3 mb-3">
+                <span className="font-mono text-3xl text-ink">
+                  {rateband.rateMin}% – {rateband.rateMax}%
+                </span>
+                <span className="text-muted font-body text-sm">
+                  · APR (all-in): <span className="font-mono">{rateband.apr}%</span>
+                </span>
+              </div>
+
+              {rateband.offerComparison && (
+                <div
+                  className={`border-l-2 px-4 py-3 mb-3 text-[.88rem] font-body ${
+                    rateband.offerComparison.isFair
+                      ? "border-accent bg-accentSoft"
+                      : "border-warn bg-[#F6EFE4]"
+                  }`}
+                >
+                  A lender quoted you <b>{rateband.offerComparison.quotedRate}%</b> —{" "}
+                  {rateband.offerComparison.isFair
+                    ? "that's within the fair range."
+                    : `that's ${rateband.offerComparison.gap}pt above what's fair. Worth negotiating.`}
+                </div>
+              )}
+
+              <p className="text-ink/80 font-body text-[.92rem]">{rateband.reason}</p>
+            </Section>
+
+            {/* O4 — EMI */}
+            <Section title="EMI to agree to" eyebrow="O4 · Monthly outflow">
+              <p className="font-mono text-3xl text-ink mb-3">{inr(emi.emiCeiling)}/mo</p>
+              <p className="text-ink/80 font-body text-[.92rem] mb-4">{emi.reason}</p>
+
+              <p className="text-[.7rem] uppercase tracking-[.08em] text-muted font-body mb-2">
+                Tenure trade-off
+              </p>
+              <div className="flex flex-wrap gap-2 mb-4">
+                {emi.tenureOptions.map((t) => (
+                  <div key={t.months} className="border border-rule px-3 py-2 text-center">
+                    <p className="text-[.7rem] text-muted font-body">{t.months} mo</p>
+                    <p className="font-mono text-sm text-ink">{inr(t.emi)}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div
+                className={`border-l-2 px-4 py-3 text-[.9rem] font-body ${
+                  emi.stressCase.survivable ? "border-accent bg-accentSoft" : "border-warn bg-[#F6EFE4]"
+                }`}
+              >
+                <b>Stress test</b> — if income drops {emi.stressCase.incomeDropPct}% or rate rises{" "}
+                {emi.stressCase.rateRisePct}pt: EMI becomes {inr(emi.stressCase.stressedEMI)}, using{" "}
+                {emi.stressCase.stressedFOIR}% of income.{" "}
+                {emi.stressCase.survivable ? "Still manageable." : "This would be tight — consider a smaller amount or longer tenure."}
+              </div>
+            </Section>
+          </>
+        )}
 
         {/* actions */}
         <div className="flex gap-3 mt-10">
@@ -156,10 +196,11 @@ function Stat({ label, value, muted, highlight }) {
 }
 
 function ConfidenceTag({ confidence }) {
-  const label = confidence >= 0.8 ? "High confidence" : confidence >= 0.55 ? "Medium confidence" : "Low confidence — answer more for a tighter range";
-  return (
-    <p className="text-[.75rem] text-muted font-body mt-3 italic">
-      {label}
-    </p>
-  );
+  const label =
+    confidence >= 0.8
+      ? "High confidence"
+      : confidence >= 0.55
+      ? "Medium confidence"
+      : "Low confidence — answer more for a tighter range";
+  return <p className="text-[.75rem] text-muted font-body mt-3 italic">{label}</p>;
 }

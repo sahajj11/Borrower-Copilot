@@ -22,15 +22,18 @@ function computeAPR(annualRatePct, feePct, tenureMonths) {
 }
 
 /**
- * Returns { rateMin, rateMax, apr, tier, reason, confidence }
+ * Returns { rateMin, rateMax, apr, offerComparison, reason, confidence }
  */
 export function computeRateBand(answers) {
   const {
     loanType,
-    creditScore,          // number or null
+    creditScore,
     incomeType,
     tenureMonths,
-    hasCollateral,         // bool
+    hasCollateral,
+    cardUtilisation,
+    hasExistingOffer,
+    existingOfferRate,
     answeredOptionalCount,
   } = answers;
 
@@ -54,6 +57,15 @@ export function computeRateBand(answers) {
     rateMax -= 1.0;
   }
 
+  // Credit card utilisation — a real risk signal lenders price in independently of score
+  if (cardUtilisation === "high") {
+    rateMin += 0.5;
+    rateMax += 0.5;
+  } else if (cardUtilisation === "medium") {
+    rateMin += 0.2;
+    rateMax += 0.2;
+  }
+
   // Floor at the loan type's absolute minimum published band
   rateMin = Math.max(rateMin, base.min - 1);
   rateMax = Math.max(rateMax, rateMin + 1);
@@ -63,19 +75,44 @@ export function computeRateBand(answers) {
   const confidence = computeConfidence(answeredOptionalCount || 0);
 
   let reason = `Base rate for ${loanType.replace("_", " ")} loans is ${base.min}-${base.max}%.`;
+
   if (creditScore === null || creditScore === undefined) {
     reason += ` Your credit score is unknown, so we've priced this like a fair/average profile rather than assuming the worst.`;
   } else {
     reason += ` Your score of ${creditScore} places you in the "${Object.keys(CREDIT_TIERS).find(k => CREDIT_TIERS[k] === creditTier)}" tier.`;
   }
+
   if (hasCollateral) {
     reason += ` Offering collateral brings the rate down since it's now a secured loan.`;
+  }
+
+  if (cardUtilisation === "high") {
+    reason += ` Carrying over 70% of your card limit adds a small premium — lenders read that as tighter cash flow.`;
+  } else if (cardUtilisation === "medium") {
+    reason += ` Moderate card utilisation adds a small premium to the rate.`;
+  }
+
+  // Compare against a lender's actual quote, if the borrower already has one
+  const offerComparison =
+    hasExistingOffer && existingOfferRate
+      ? {
+          quotedRate: existingOfferRate,
+          isFair: existingOfferRate <= rateMax,
+          gap: Math.round((existingOfferRate - rateMax) * 100) / 100,
+        }
+      : null;
+
+  if (offerComparison && !offerComparison.isFair) {
+    reason += ` A lender already quoted you ${existingOfferRate}%, which is ${offerComparison.gap}pt above the fair range — worth negotiating.`;
+  } else if (offerComparison && offerComparison.isFair) {
+    reason += ` A lender already quoted you ${existingOfferRate}%, which is within the fair range.`;
   }
 
   return {
     rateMin: Math.round(rateMin * 100) / 100,
     rateMax: Math.round(rateMax * 100) / 100,
     apr,
+    offerComparison,
     reason,
     confidence,
   };

@@ -1,31 +1,28 @@
 // src/rules/verdict.js
-import { FOIR_LIMITS, HIGH_COST_DEBT_RATE_THRESHOLD, AGE_LIMITS, SAVINGS_BUFFER } from "./threshold.js";
+import { FOIR_LIMITS, AGE_LIMITS, SAVINGS_BUFFER, DEPENDENT_ADJUSTMENT, CO_APPLICANT_INCOME_WEIGHT } from "./threshold.js";
 
-/**
- * Returns { verdict: "borrow" | "borrow_less" | "dont_borrow", reason: string, flags: string[] }
- */
+function effectiveIncome(answers) {
+  const declared = answers.netMonthlyIncome || 0;
+  const actual = answers.actualMonthlyIncome ?? declared;
+  const coIncome = answers.coApplicant ? (answers.coApplicantIncome || 0) * CO_APPLICANT_INCOME_WEIGHT : 0;
+  // Verdict/safety checks use REAL cash-flow income, not just what's on paper
+  return actual + coIncome; 
+}
+
+function adjustedSafeCeiling(baseSafeCeiling, dependents) {
+  const reduction = Math.min((dependents || 0) * DEPENDENT_ADJUSTMENT.perDependent, DEPENDENT_ADJUSTMENT.maxReduction);
+  return Math.max(0.15, baseSafeCeiling - reduction);
+}
+
 export function computeVerdict(answers) {
-  const {
-    age,
-    incomeType,          // "salaried" | "self_employed" | "informal"
-    netMonthlyIncome,
-    existingEMIs,          // total ₹/month
-    householdExpenses,
-    amountWanted,
-    tenureMonths,
-    hasHighCostDebt,       // bool: existing loans at >24% APR
-    recentBounce,          // bool: bounced an EMI/payment recently
-    savingsMonths,         // number or null if unknown
-  } = answers;
+  const { age, incomeType, existingEMIs, hasHighCostDebt, recentBounce, savingsMonths, dependents } = answers;
 
   const flags = [];
 
-  // Hard stop: age outside working eligibility
   if (age < AGE_LIMITS.min) {
     return { verdict: "dont_borrow", reason: `Below minimum lending age of ${AGE_LIMITS.min}.`, flags: ["age"] };
   }
 
-  // Hard stop: recent bounce + high-cost existing debt = clear distress signal
   if (recentBounce && hasHighCostDebt) {
     return {
       verdict: "dont_borrow",
@@ -34,31 +31,24 @@ export function computeVerdict(answers) {
     };
   }
 
+  const income = effectiveIncome(answers);
   const tier = FOIR_LIMITS[incomeType];
-  const band = netMonthlyIncome <= tier.low.maxIncome ? tier.low
-    : netMonthlyIncome <= tier.mid.maxIncome ? tier.mid
+  const band = income <= tier.low.maxIncome ? tier.low
+    : income <= tier.mid.maxIncome ? tier.mid
     : tier.high;
 
-  const currentFOIR = existingEMIs / netMonthlyIncome;
+  const safeCeiling = adjustedSafeCeiling(band.safeCeiling, dependents);
+  const currentFOIR = income > 0 ? existingEMIs / income : 1;
 
-  // Already over safe FOIR before even adding new loan
-  if (currentFOIR >= band.safeCeiling) {
-    flags.push("existing_foir_high");
-  }
-
-  // High-cost debt present, even without a bounce — still a caution flag
+  if (currentFOIR >= safeCeiling) flags.push("existing_foir_high");
   if (hasHighCostDebt) flags.push("high_cost_debt");
+  if (savingsMonths !== null && savingsMonths !== undefined && savingsMonths < SAVINGS_BUFFER.thin) flags.push("thin_savings");
+  if ((dependents || 0) >= 3) flags.push("high_dependents");
 
-  // Thin/no savings buffer widens caution but is not a hard stop by itself
-  if (savingsMonths !== null && savingsMonths < SAVINGS_BUFFER.thin) {
-    flags.push("thin_savings");
-  }
-
-  // Decision logic
   if (currentFOIR >= band.lenderCeiling || (hasHighCostDebt && recentBounce)) {
     return {
       verdict: "dont_borrow",
-      reason: `Existing monthly obligations already take up ${Math.round(currentFOIR * 100)}% of income — above what's safe to add to, regardless of a new loan's terms.`,
+      reason: `Existing monthly obligations already take up ${Math.round(currentFOIR * 100)}% of your real household income — above what's safe to add to.`,
       flags,
     };
   }
@@ -66,14 +56,14 @@ export function computeVerdict(answers) {
   if (flags.length >= 2) {
     return {
       verdict: "borrow_less",
-      reason: "Multiple caution signals (existing high-cost debt and/or thin savings) mean a smaller amount than requested is the safer move.",
+      reason: "Multiple caution signals — existing high-cost debt, thin savings, or several dependents — mean a smaller amount than requested is the safer move.",
       flags,
     };
   }
 
   return {
     verdict: "borrow",
-    reason: "Income, existing obligations, and repayment history support taking this loan at a reasonable size.",
+    reason: "Income (including any co-applicant income), existing obligations, and dependents support taking this loan at a reasonable size.",
     flags,
   };
 }

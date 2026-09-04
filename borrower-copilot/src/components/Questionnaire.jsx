@@ -38,11 +38,18 @@ export default function Questionnaire({ onComplete }) {
 
   function finalize() {
     const answeredOptionalCount = applicableAdditional.filter(
-      (q) => answers[q.id] !== undefined && answers[q.id] !== null
+      (q) => answers[q.id] !== undefined && answers[q.id] !== null && answers[q.id] !== ""
     ).length;
 
+    // Convert the UI-only "unknown" sentinel back to null before handing off
+    // to the rules engine, which expects null for "not known".
+    const cleanedAnswers = { ...answers };
+    if (cleanedAnswers.creditScore === "unknown") {
+      cleanedAnswers.creditScore = null;
+    }
+
     onComplete({
-      ...answers,
+      ...cleanedAnswers,
       answeredOptionalCount,
       applicableOptionalCount: applicableAdditional.length,
     });
@@ -140,9 +147,15 @@ function QuestionInput({ question, value, onChange }) {
           {question.prefix && <span className="text-2xl font-mono text-muted">{question.prefix}</span>}
           <input
             type="number"
+            min="0"
             className="w-full bg-transparent border-0 focus:outline-none text-3xl font-mono py-2 text-ink placeholder:text-muted/40"
             value={value ?? ""}
-            onChange={(e) => onChange(e.target.value === "" ? "" : Number(e.target.value))}
+            onChange={(e) => {
+              const raw = e.target.value;
+              if (raw === "") return onChange("");
+              const n = Math.max(0, Number(raw));
+              onChange(n);
+            }}
             placeholder="0"
             autoFocus
           />
@@ -154,17 +167,23 @@ function QuestionInput({ question, value, onChange }) {
         <div>
           <input
             type="number"
+            min="0"
             className="w-full bg-transparent border-0 border-b-2 border-rule focus:border-accent focus:outline-none text-3xl font-mono py-2 text-ink placeholder:text-muted/40 transition-colors mb-4"
-            value={value ?? ""}
-            onChange={(e) => onChange(e.target.value === "" ? "" : Number(e.target.value))}
+            value={value === "unknown" ? "" : value ?? ""}
+            onChange={(e) => {
+              const raw = e.target.value;
+              if (raw === "") return onChange("");
+              const n = Math.max(0, Number(raw));
+              onChange(n);
+            }}
             placeholder="e.g. 750"
             autoFocus
           />
           <button
             type="button"
-            onClick={() => onChange(null)}
+            onClick={() => onChange("unknown")}
             className={`text-sm underline underline-offset-4 transition-colors font-body ${
-              value === null ? "text-accent font-semibold decoration-accent" : "text-muted decoration-rule hover:text-ink"
+              value === "unknown" ? "text-accent font-semibold decoration-accent" : "text-muted decoration-rule hover:text-ink"
             }`}
           >
             I don't know my score

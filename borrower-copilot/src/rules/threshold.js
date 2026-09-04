@@ -65,5 +65,15 @@ export const LTV_LIMITS = {
   home: 0.80,
 };
 
+// Dependents reduce safe FOIR ceiling — more mouths to feed, less room for EMI
+export const DEPENDENT_ADJUSTMENT = {
+  perDependent: 0.02,   // reduce safe ceiling by 2 percentage points per dependent
+  maxReduction: 0.10,   // never reduce safe ceiling by more than 10 points total
+};
+
+// Co-applicant income counted at a discount — it's real, but adds household
+// coordination risk a lender/borrower should be conservative about
+export const CO_APPLICANT_INCOME_WEIGHT = 0.5;
+
 // Minimum age for eligibility, and where senior risk starts widening bands
 export const AGE_LIMITS = { min: 21, seniorCaution: 58 };

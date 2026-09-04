@@ -1,12 +1,7 @@
 // src/questions/questionTree.js
 
 export const MUST_QUESTIONS = [
-  {
-    id: "age",
-    label: "Your age",
-    type: "number",
-    feeds: "age",
-  },
+  { id: "age", label: "Your age", type: "number", feeds: "age" },
   {
     id: "incomeType",
     label: "How do you earn?",
@@ -18,12 +13,7 @@ export const MUST_QUESTIONS = [
     ],
     feeds: "incomeType",
   },
-  {
-    id: "netMonthlyIncome",
-    label: "Your net monthly income (₹)",
-    type: "number",
-    feeds: "netMonthlyIncome",
-  },
+  { id: "netMonthlyIncome", label: "Your net monthly income (₹)", type: "number", feeds: "netMonthlyIncome" },
   {
     id: "existingEMIs",
     label: "Total existing EMIs / loan payments per month (₹)",
@@ -31,12 +21,7 @@ export const MUST_QUESTIONS = [
     feeds: "existingEMIs",
     defaultValue: 0,
   },
-  {
-    id: "householdExpenses",
-    label: "Monthly household expenses (₹)",
-    type: "number",
-    feeds: "householdExpenses",
-  },
+  { id: "householdExpenses", label: "Monthly household expenses (₹)", type: "number", feeds: "householdExpenses" },
   {
     id: "loanType",
     label: "What kind of loan is this?",
@@ -51,12 +36,7 @@ export const MUST_QUESTIONS = [
     ],
     feeds: "loanType",
   },
-  {
-    id: "amountWanted",
-    label: "How much do you want to borrow (₹)?",
-    type: "number",
-    feeds: "amountWanted",
-  },
+  { id: "amountWanted", label: "How much do you want to borrow (₹)?", type: "number", feeds: "amountWanted" },
   {
     id: "tenureMonths",
     label: "Preferred repayment period (months)",
@@ -96,8 +76,51 @@ export const ADDITIONAL_QUESTIONS = [
     appliesWhen: () => true,
     feeds: "savingsMonths",
   },
+  {
+    id: "dependents",
+    label: "How many people depend on your income (children, elderly parents, etc.)?",
+    type: "number",
+    appliesWhen: () => true,
+    feeds: "dependents",
+    defaultValue: 0,
+  },
+  {
+    id: "coApplicant",
+    label: "Is there a co-applicant with additional income?",
+    type: "boolean",
+    appliesWhen: () => true,
+    feeds: "coApplicant",
+  },
+  {
+    id: "coApplicantIncome",
+    label: "Roughly what does your co-applicant earn per month (₹)?",
+    type: "number",
+    appliesWhen: (answers) => answers.coApplicant === true,
+    feeds: "coApplicantIncome",
+  },
+  {
+    id: "hasExistingOffer",
+    label: "Has a lender already quoted you a rate?",
+    type: "boolean",
+    appliesWhen: () => true,
+    feeds: "hasExistingOffer",
+  },
+  {
+    id: "existingOfferRate",
+    label: "What rate did they quote (%)?",
+    type: "number",
+    appliesWhen: (answers) => answers.hasExistingOffer === true,
+    feeds: "existingOfferRate",
+  },
 
   // ---- Self-employed / informal only ----
+  {
+    id: "actualMonthlyIncome",
+    label: "What do you actually take home monthly, including any cash income not on paper?",
+    type: "number",
+    appliesWhen: (answers) => answers.incomeType !== "salaried",
+    feeds: "actualMonthlyIncome",
+  },
   {
     id: "hasCollateral",
     label: "Do you own any property or asset you could offer as security?",
@@ -113,13 +136,6 @@ export const ADDITIONAL_QUESTIONS = [
     feeds: "collateralValue",
   },
   {
-    id: "incomeStabilityYears",
-    label: "How many years have you had this income source?",
-    type: "number",
-    appliesWhen: (answers) => answers.incomeType !== "salaried",
-    feeds: "incomeStabilityYears",
-  },
-  {
     id: "variableIncomeShare",
     label: "Roughly what share of your income varies month to month?",
     type: "select",
@@ -131,22 +147,8 @@ export const ADDITIONAL_QUESTIONS = [
     appliesWhen: (answers) => answers.incomeType !== "salaried",
     feeds: "variableIncomeShare",
   },
-  {
-    id: "coApplicant",
-    label: "Is there a co-applicant with additional income?",
-    type: "boolean",
-    appliesWhen: () => true,
-    feeds: "coApplicant",
-  },
 
   // ---- Salaried only ----
-  {
-    id: "jobTenureYears",
-    label: "How many years at your current employer?",
-    type: "number",
-    appliesWhen: (answers) => answers.incomeType === "salaried",
-    feeds: "jobTenureYears",
-  },
   {
     id: "cardUtilisation",
     label: "Roughly what % of your credit card limit do you usually carry?",
@@ -158,37 +160,5 @@ export const ADDITIONAL_QUESTIONS = [
     ],
     appliesWhen: (answers) => answers.incomeType === "salaried",
     feeds: "cardUtilisation",
-  },
-
-  // ---- Productive-loan only (business/LAP) ----
-  {
-    id: "loanWillEarn",
-    label: "Will this loan be used for something that generates income (e.g. stock, equipment)?",
-    type: "boolean",
-    appliesWhen: (answers) => ["business", "lap"].includes(answers.loanType),
-    feeds: "loanWillEarn",
-  },
-  {
-    id: "expectedMonthlyEarning",
-    label: "Roughly how much extra income per month do you expect from it (₹)?",
-    type: "number",
-    appliesWhen: (answers) => answers.loanWillEarn === true,
-    feeds: "expectedMonthlyEarning",
-  },
-
-  // ---- Offers already received ----
-  {
-    id: "hasExistingOffer",
-    label: "Has a lender already quoted you a rate?",
-    type: "boolean",
-    appliesWhen: () => true,
-    feeds: "hasExistingOffer",
-  },
-  {
-    id: "existingOfferRate",
-    label: "What rate did they quote (%)?",
-    type: "number",
-    appliesWhen: (answers) => answers.hasExistingOffer === true,
-    feeds: "existingOfferRate",
   },
 ];
