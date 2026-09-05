@@ -131,9 +131,9 @@ export default function Questionnaire({ onComplete }) {
         </div>
 
         {/* reassurance footer */}
-        <p className="text-center text-[.8rem] text-muted mt-5 font-body">
+        {/* <p className="text-center text-[.8rem] text-muted mt-5 font-body">
           No login, no bureau pull, nothing stored.
-        </p>
+        </p> */}
       </div>
     </div>
   );

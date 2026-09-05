@@ -48,7 +48,7 @@ export default function App() {
             onClick={() => setStage("questions")}
             className="bg-accent text-accentInk px-7 py-3 text-sm font-semibold tracking-wide font-body hover:opacity-90 transition-opacity"
           >
-            Start — takes 3 minutes
+            Start
           </button>
           <p className="text-[.8rem] text-muted mt-5 font-body">
             No login, no bureau pull, nothing stored.
