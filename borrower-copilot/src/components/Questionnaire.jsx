@@ -123,7 +123,7 @@ export default function Questionnaire({ onComplete }) {
             <button
               onClick={handleNext}
               disabled={!canProceed}
-              className="bg-accent text-accentInk px-6 py-2.5 text-sm font-semibold tracking-wide font-body disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
+              className="bg-accent cursor-pointer text-accentInk px-6 py-2.5 text-sm font-semibold tracking-wide font-body disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
             >
               {isLast ? "See my results →" : "Continue"}
             </button>

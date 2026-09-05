@@ -46,7 +46,7 @@ export default function App() {
           </p>
           <button
             onClick={() => setStage("questions")}
-            className="bg-accent text-accentInk px-7 py-3 text-sm font-semibold tracking-wide font-body hover:opacity-90 transition-opacity"
+            className="bg-accent cursor-pointer text-accentInk px-7 py-3 text-sm font-semibold tracking-wide font-body hover:opacity-90 transition-opacity"
           >
             Start
           </button>
